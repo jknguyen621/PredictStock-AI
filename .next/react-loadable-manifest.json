@@ -1,0 +1,20 @@
+{
+  "pages/index.js -> ../components/Chart": {
+    "id": "pages/index.js -> ../components/Chart",
+    "files": [
+      "static/chunks/components_Chart_js.js"
+    ]
+  },
+  "pages/index.js -> chartjs-plugin-zoom": {
+    "id": "pages/index.js -> chartjs-plugin-zoom",
+    "files": [
+      "static/chunks/node_modules_chartjs-plugin-zoom_dist_chartjs-plugin-zoom_esm_js.js"
+    ]
+  },
+  "pages/index.js -> hammerjs": {
+    "id": "pages/index.js -> hammerjs",
+    "files": [
+      "static/chunks/node_modules_hammerjs_hammer_js.js"
+    ]
+  }
+}
