@@ -54,9 +54,13 @@ export default function Home() {
   const [historicalData, setHistoricalData] = useState(null);
   const [macdData, setMacdData] = useState(null);
   const [rsiData, setRsiData] = useState(null);
-  const [sma200Data, setSma200Data] = useState(null);
+  // const [sma200Data, setSma200Data] = useState(null);
+  const [sma30Data, setSma30Data] = useState(null);
+  const [sma10Data, setSma10Data] = useState(null);
   const [prediction, setPrediction] = useState(null);
   const [error, setError] = useState(null);
+  const [countdown, setCountdown] = useState(0);
+  const [isFetching, setIsFetching] = useState(false);
 
   useEffect(() => {
     const lastTicker = localStorage.getItem('lastTicker');
@@ -79,13 +83,16 @@ export default function Home() {
   };
 
   const fetchStockData = async (tickerSymbol) => {
-    if (!tickerSymbol) return;
+    if (!tickerSymbol || isFetching) return;
 
+    setIsFetching(true);
     setError(null);
     setHistoricalData(null);
     setMacdData(null);
     setRsiData(null);
-    setSma200Data(null);
+    // setSma200Data(null);
+    setSma30Data(null);
+    setSma10Data(null);
     setPrediction(null);
 
     const apiKey = process.env.NEXT_PUBLIC_POLYGON_API_KEY;
@@ -99,7 +106,9 @@ export default function Home() {
         aggregates: `https://api.polygon.io/v2/aggs/ticker/${upperTickerSymbol}/range/1/day/${from}/${to}?adjusted=true&sort=asc&apiKey=${apiKey}`,
         macd: `https://api.polygon.io/v1/indicators/macd/${upperTickerSymbol}?timespan=day&adjusted=true&short_window=12&long_window=26&signal_window=9&series_type=close&order=desc&apiKey=${apiKey}`,
         rsi: `https://api.polygon.io/v1/indicators/rsi/${upperTickerSymbol}?timespan=day&adjusted=true&window=14&series_type=close&order=desc&apiKey=${apiKey}`,
-        sma200: `https://api.polygon.io/v1/indicators/sma/${upperTickerSymbol}?timespan=day&adjusted=true&window=200&series_type=close&order=desc&apiKey=${apiKey}`,
+        // sma200: `https://api.polygon.io/v1/indicators/sma/${upperTickerSymbol}?timespan=day&adjusted=true&window=200&series_type=close&order=desc&apiKey=${apiKey}`,
+        sma30: `https://api.polygon.io/v1/indicators/sma/${upperTickerSymbol}?timespan=day&adjusted=true&window=30&series_type=close&order=desc&apiKey=${apiKey}`,
+        sma10: `https://api.polygon.io/v1/indicators/sma/${upperTickerSymbol}?timespan=day&adjusted=true&window=10&series_type=close&order=desc&apiKey=${apiKey}`,
       };
 
       const responses = await Promise.all(Object.values(urls).map(url => fetch(url)));
@@ -110,16 +119,18 @@ export default function Home() {
         }
       }
 
-      const [aggregates, macd, rsi, sma200] = await Promise.all(responses.map(res => res.json()));
+      const [aggregates, macd, rsi, sma30, sma10] = await Promise.all(responses.map(res => res.json()));
 
-      if (!aggregates?.results?.length || !macd?.results?.values?.length || !rsi?.results?.values?.length || !sma200?.results?.values?.length) {
+      if (!aggregates?.results?.length || !macd?.results?.values?.length || !rsi?.results?.values?.length || !sma30?.results?.values?.length || !sma10?.results?.values?.length) {
         throw new Error("Incomplete data returned from API. Please check ticker symbol and date range.");
       }
 
       setHistoricalData(aggregates);
       setMacdData(macd);
       setRsiData(rsi);
-      setSma200Data(sma200);
+      // setSma200Data(sma200);
+      setSma30Data(sma30);
+      setSma10Data(sma10);
 
       // Prediction
       const predictionResponse = await fetch('/api/predict', {
@@ -145,6 +156,18 @@ export default function Home() {
     } catch (e) {
       setError(e.message);
       console.error(e);
+    } finally {
+      setCountdown(60);
+      const timer = setInterval(() => {
+        setCountdown(prevCountdown => {
+          if (prevCountdown <= 1) {
+            clearInterval(timer);
+            setIsFetching(false);
+            return 0;
+          }
+          return prevCountdown - 1;
+        });
+      }, 1000);
     }
   };
 
@@ -177,20 +200,44 @@ export default function Home() {
   }), []);
 
   const getPriceChartData = () => {
-    if (!historicalData || !sma200Data) return {};
+    if (!historicalData || !sma30Data || !sma10Data) return {};
 
     const closingPrices = historicalData.results;
 
-    const sma200Map = new Map();
-    if (sma200Data.results && sma200Data.results.values) {
-        sma200Data.results.values.forEach(d => {
-            sma200Map.set(new Date(d.timestamp).toLocaleDateString(), d.value);
+    // const sma200Map = new Map();
+    // if (sma200Data.results && sma200Data.results.values) {
+    //     sma200Data.results.values.forEach(d => {
+    //         sma200Map.set(new Date(d.timestamp).toLocaleDateString(), d.value);
+    //     });
+    // }
+
+    const sma30Map = new Map();
+    if (sma30Data.results && sma30Data.results.values) {
+        sma30Data.results.values.forEach(d => {
+            sma30Map.set(new Date(d.timestamp).toLocaleDateString(), d.value);
         });
     }
 
-    const sma200PlotData = closingPrices.map(d => {
+    const sma10Map = new Map();
+    if (sma10Data.results && sma10Data.results.values) {
+        sma10Data.results.values.forEach(d => {
+            sma10Map.set(new Date(d.timestamp).toLocaleDateString(), d.value);
+        });
+    }
+
+    // const sma200PlotData = closingPrices.map(d => {
+    //     const dateString = new Date(d.t).toLocaleDateString();
+    //     return sma200Map.get(dateString) || null;
+    // });
+
+    const sma30PlotData = closingPrices.map(d => {
         const dateString = new Date(d.t).toLocaleDateString();
-        return sma200Map.get(dateString) || null;
+        return sma30Map.get(dateString) || null;
+    });
+
+    const sma10PlotData = closingPrices.map(d => {
+        const dateString = new Date(d.t).toLocaleDateString();
+        return sma10Map.get(dateString) || null;
     });
 
     const labels = closingPrices.map(d => new Date(d.t).toLocaleDateString());
@@ -201,10 +248,26 @@ export default function Home() {
         borderColor: 'blue',
         fill: false
       },
+      // {
+      //   label: '200-Day SMA',
+      //   data: sma200PlotData,
+      //   borderColor: 'orange',
+      //   fill: false,
+      //   pointRadius: 0,
+      //   spanGaps: true,
+      // },
       {
-        label: '200-Day SMA',
-        data: sma200PlotData,
-        borderColor: 'orange',
+        label: '30-Day SMA',
+        data: sma30PlotData,
+        borderColor: 'purple',
+        fill: false,
+        pointRadius: 0,
+        spanGaps: true,
+      },
+      {
+        label: '10-Day SMA',
+        data: sma10PlotData,
+        borderColor: 'green',
         fill: false,
         pointRadius: 0,
         spanGaps: true,
@@ -282,35 +345,51 @@ export default function Home() {
   return (
     <div style={{ fontFamily: 'Arial, sans-serif', margin: '2em' }}>
       <h1>Stock Price Predictor</h1>
-      <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          value={ticker}
-          onChange={(e) => setTicker(e.target.value)}
-          placeholder="Enter Ticker Symbol (e.g., AAPL)"
-          style={{ padding: '0.5em', marginRight: '1em' }}
-        />
-        <input
-          type="date"
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-          style={{ padding: '0.5em', marginRight: '1em' }}
-        />
-        <input
-          type="date"
-          value={endDate}
-          onChange={(e) => setEndDate(e.target.value)}
-          style={{ padding: '0.5em', marginRight: '1em' }}
-        />
-        <input
-          type="number"
-          value={daysToPredict}
-          onChange={(e) => setDaysToPredict(parseInt(e.target.value))}
-          placeholder="Days to Predict"
-          style={{ padding: '0.5em', marginRight: '1em', width: '120px' }}
-        />
-        <button type="submit" style={{ padding: '0.5em 1em' }}>
-          Predict
+      <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1em', alignItems: 'end' }}>
+        <div>
+          <label htmlFor="tickerInput" style={{ display: 'block', marginBottom: '0.5em' }}>Ticker Symbol</label>
+          <input
+            id="tickerInput"
+            type="text"
+            value={ticker}
+            onChange={(e) => setTicker(e.target.value)}
+            placeholder="e.g., AAPL"
+            style={{ padding: '0.5em', width: '100%' }}
+          />
+        </div>
+        <div>
+          <label htmlFor="startDateInput" style={{ display: 'block', marginBottom: '0.5em' }}>Start Date</label>
+          <input
+            id="startDateInput"
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            style={{ padding: '0.5em', width: '100%' }}
+          />
+        </div>
+        <div>
+          <label htmlFor="endDateInput" style={{ display: 'block', marginBottom: '0.5em' }}>End Date</label>
+          <input
+            id="endDateInput"
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            style={{ padding: '0.5em', width: '100%' }}
+          />
+        </div>
+        <div>
+          <label htmlFor="predictionLengthInput" style={{ display: 'block', marginBottom: '0.5em' }}>Prediction Length (Days)</label>
+          <input
+            id="predictionLengthInput"
+            type="number"
+            value={daysToPredict}
+            onChange={(e) => setDaysToPredict(parseInt(e.target.value))}
+            placeholder="e.g., 60"
+            style={{ padding: '0.5em', width: '100%' }}
+          />
+        </div>
+        <button type="submit" style={{ padding: '0.5em 1em', gridColumn: '1 / -1' }} disabled={isFetching}>
+          {isFetching ? `Wait ${countdown}s` : 'Predict'}
         </button>
       </form>
 
@@ -319,9 +398,9 @@ export default function Home() {
       {historicalData && pluginsLoaded && (
         <div>
             <div style={{ marginTop: '2em' }}>
-                <h2>Historical Data with 200-Day SMA</h2>
+                <h2>Historical Data with Moving Averages</h2>
                 <div style={{ border: '1px solid #ccc', padding: '1em', minHeight: '200px' }}>
-                    {sma200Data && <Chart id="price-chart" data={getPriceChartData()} options={chartOptions} />}
+                    {sma10Data && <Chart id="price-chart" data={getPriceChartData()} options={chartOptions} />}
                 </div>
                 <button onClick={() => resetZoom('price-chart')} style={{ marginTop: '1em' }}>Reset Zoom</button>
             </div>
