@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import {
@@ -177,23 +176,30 @@ export default function Home() {
   };
 
   const chartOptions = useMemo(() => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    color: '#94a3b8',
+    scales: {
+      x: {
+        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+        ticks: { color: '#94a3b8' }
+      },
+      y: {
+        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+        ticks: { color: '#94a3b8' }
+      }
+    },
     plugins: {
+      legend: {
+        labels: { color: '#f8fafc', usePointStyle: true, boxWidth: 8 }
+      },
       zoom: {
-        pan: {
-          enabled: true,
-          mode: 'x',
-        },
+        pan: { enabled: true, mode: 'x' },
         zoom: {
-          drag: {
-            enabled: true,
-          },
+          drag: { enabled: true },
           mode: 'x',
-          wheel: {
-            enabled: true,
-          },
-          pinch: {
-            enabled: true
-          },
+          wheel: { enabled: true },
+          pinch: { enabled: true }
         }
       }
     },
@@ -203,13 +209,6 @@ export default function Home() {
     if (!historicalData || !sma30Data || !sma10Data) return {};
 
     const closingPrices = historicalData.results;
-
-    // const sma200Map = new Map();
-    // if (sma200Data.results && sma200Data.results.values) {
-    //     sma200Data.results.values.forEach(d => {
-    //         sma200Map.set(new Date(d.timestamp).toLocaleDateString(), d.value);
-    //     });
-    // }
 
     const sma30Map = new Map();
     if (sma30Data.results && sma30Data.results.values) {
@@ -224,11 +223,6 @@ export default function Home() {
             sma10Map.set(new Date(d.timestamp).toLocaleDateString(), d.value);
         });
     }
-
-    // const sma200PlotData = closingPrices.map(d => {
-    //     const dateString = new Date(d.t).toLocaleDateString();
-    //     return sma200Map.get(dateString) || null;
-    // });
 
     const sma30PlotData = closingPrices.map(d => {
         const dateString = new Date(d.t).toLocaleDateString();
@@ -245,21 +239,13 @@ export default function Home() {
       {
         label: 'Close Price',
         data: closingPrices.map(d => d.c),
-        borderColor: 'blue',
+        borderColor: '#38bdf8', // primary
         fill: false
       },
-      // {
-      //   label: '200-Day SMA',
-      //   data: sma200PlotData,
-      //   borderColor: 'orange',
-      //   fill: false,
-      //   pointRadius: 0,
-      //   spanGaps: true,
-      // },
       {
         label: '30-Day SMA',
         data: sma30PlotData,
-        borderColor: 'purple',
+        borderColor: '#c084fc', // secondary
         fill: false,
         pointRadius: 0,
         spanGaps: true,
@@ -267,7 +253,7 @@ export default function Home() {
       {
         label: '10-Day SMA',
         data: sma10PlotData,
-        borderColor: 'green',
+        borderColor: '#34d399', // success
         fill: false,
         pointRadius: 0,
         spanGaps: true,
@@ -291,7 +277,7 @@ export default function Home() {
       });
 
       const lastPredictedPrice = prediction.future_prices[lastPredictionDays];
-      const predictionColor = parseFloat(lastPredictedPrice) > prediction.lastClosingPrice ? 'green' : 'red';
+      const predictionColor = parseFloat(lastPredictedPrice) > prediction.lastClosingPrice ? '#34d399' : '#ef4444';
 
       const sparsePredictionData = Array(lastPredictionDays).fill(null);
       Object.entries(prediction.future_prices).forEach(([days, price]) => {
@@ -326,9 +312,9 @@ export default function Home() {
     return {
         labels: values.map(d => new Date(d.timestamp).toLocaleDateString()),
         datasets: [
-            { label: 'MACD', data: values.map(d => d.value), borderColor: 'blue', fill: false },
-            { label: 'Signal', data: values.map(d => d.signal), borderColor: 'orange', fill: false },
-            { label: 'Histogram', data: values.map(d => d.histogram), backgroundColor: 'rgba(128, 128, 128, 0.5)', type: 'bar' }
+            { label: 'MACD', data: values.map(d => d.value), borderColor: '#38bdf8', fill: false },
+            { label: 'Signal', data: values.map(d => d.signal), borderColor: '#f59e0b', fill: false },
+            { label: 'Histogram', data: values.map(d => d.histogram), backgroundColor: 'rgba(56, 189, 248, 0.3)', type: 'bar' }
         ]
     }
   }
@@ -338,104 +324,117 @@ export default function Home() {
       const values = [...rsiData.results.values].reverse();
       return {
           labels: values.map(d => new Date(d.timestamp).toLocaleDateString()),
-          datasets: [{ label: 'RSI', data: values.map(d => d.value), borderColor: 'red', fill: false }]
+          datasets: [{ label: 'RSI', data: values.map(d => d.value), borderColor: '#ef4444', fill: false }]
       }
   }
 
   return (
-    <div style={{ fontFamily: 'Arial, sans-serif', margin: '2em' }}>
-      <h1>Stock Price Predictor</h1>
-      <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1em', alignItems: 'end' }}>
-        <div>
-          <label htmlFor="tickerInput" style={{ display: 'block', marginBottom: '0.5em' }}>Ticker Symbol</label>
-          <input
-            id="tickerInput"
-            type="text"
-            value={ticker}
-            onChange={(e) => setTicker(e.target.value)}
-            placeholder="e.g., AAPL"
-            style={{ padding: '0.5em', width: '100%' }}
-          />
-        </div>
-        <div>
-          <label htmlFor="startDateInput" style={{ display: 'block', marginBottom: '0.5em' }}>Start Date</label>
-          <input
-            id="startDateInput"
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            style={{ padding: '0.5em', width: '100%' }}
-          />
-        </div>
-        <div>
-          <label htmlFor="endDateInput" style={{ display: 'block', marginBottom: '0.5em' }}>End Date</label>
-          <input
-            id="endDateInput"
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            style={{ padding: '0.5em', width: '100%' }}
-          />
-        </div>
-        <div>
-          <label htmlFor="predictionLengthInput" style={{ display: 'block', marginBottom: '0.5em' }}>Prediction Length (Days)</label>
-          <input
-            id="predictionLengthInput"
-            type="number"
-            value={daysToPredict}
-            onChange={(e) => setDaysToPredict(parseInt(e.target.value))}
-            placeholder="e.g., 60"
-            style={{ padding: '0.5em', width: '100%' }}
-          />
-        </div>
-        <button type="submit" style={{ padding: '0.5em 1em', gridColumn: '1 / -1' }} disabled={isFetching}>
-          {isFetching ? `Wait ${countdown}s` : 'Predict'}
-        </button>
-      </form>
-
-      {error && <div style={{color: 'red', marginTop: '1em'}}>Error: {error}</div>}
+    <div className="container">
+      <h1>PredictStock AI</h1>
+      
+      <div className="card">
+        <form onSubmit={handleSubmit} className="form-grid">
+          <div className="input-group">
+            <label htmlFor="tickerInput">Ticker Symbol</label>
+            <input
+              id="tickerInput"
+              type="text"
+              value={ticker}
+              onChange={(e) => setTicker(e.target.value)}
+              placeholder="e.g., AAPL"
+              autoComplete="off"
+            />
+          </div>
+          <div className="input-group">
+            <label htmlFor="startDateInput">Start Date</label>
+            <input
+              id="startDateInput"
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </div>
+          <div className="input-group">
+            <label htmlFor="endDateInput">End Date</label>
+            <input
+              id="endDateInput"
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </div>
+          <div className="input-group">
+            <label htmlFor="predictionLengthInput">Prediction Length (Days)</label>
+            <input
+              id="predictionLengthInput"
+              type="number"
+              value={daysToPredict}
+              onChange={(e) => setDaysToPredict(parseInt(e.target.value) || 0)}
+              placeholder="e.g., 60"
+              min="1"
+            />
+          </div>
+          <button type="submit" className="btn" disabled={isFetching}>
+            {isFetching ? <span className="loading-text">Analyzing ({countdown}s)...</span> : 'Run Prediction Model'}
+          </button>
+        </form>
+        {error && <div className="text-danger mt-4" style={{ fontWeight: 500 }}>⚠ Error: {error}</div>}
+      </div>
 
       {historicalData && pluginsLoaded && (
-        <div>
-            <div style={{ marginTop: '2em' }}>
-                <h2>Historical Data with Moving Averages</h2>
-                <div style={{ border: '1px solid #ccc', padding: '1em', minHeight: '200px' }}>
-                    {sma10Data && <Chart id="price-chart" data={getPriceChartData()} options={chartOptions} />}
-                </div>
-                <button onClick={() => resetZoom('price-chart')} style={{ marginTop: '1em' }}>Reset Zoom</button>
+        <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
+          
+          {prediction && (
+            <div className="card">
+              <h2>Trend Prediction</h2>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <span style={{ fontSize: '1.2rem', color: 'var(--text-muted)' }}>AI Forecast Direction: </span>
+                <span style={{ 
+                  fontSize: '1.2rem', 
+                  fontWeight: 700, 
+                  color: prediction.trend === 'UP' ? 'var(--success)' : (prediction.trend === 'DOWN' ? 'var(--danger)' : 'var(--primary)'),
+                  textTransform: 'uppercase',
+                  letterSpacing: '2px'
+                }}>
+                  {prediction.trend}
+                </span>
+              </div>
+              <p style={{ marginBottom: '1rem', textTransform: 'uppercase', fontSize: '0.875rem', letterSpacing: '1px' }}>Projected Milestones</p>
+              <ul className="prediction-list">
+                {Object.entries(prediction.future_prices).map(([days, price]) => (
+                  <li key={days} className="prediction-item">
+                    <span>{days} Days Out</span>
+                    <span>${parseFloat(price).toFixed(2)}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <div style={{ marginTop: '2em' }}>
-                <h2>RSI (14-Day)</h2>
-                <div style={{ border: '1px solid #ccc', padding: '1em', minHeight: '200px' }}>
-                    {rsiData && <Chart id="rsi-chart" data={getRsiChartData()} options={chartOptions} />}
-                </div>
-                <button onClick={() => resetZoom('rsi-chart')} style={{ marginTop: '1em' }}>Reset Zoom</button>
+          )}
+
+          <div className="card mt-8">
+            <h2>Price Action & Moving Averages</h2>
+            <div className="chart-container">
+                {sma10Data && <Chart id="price-chart" data={getPriceChartData()} options={chartOptions} />}
             </div>
-            <div style={{ marginTop: '2em' }}>
-                <h2>MACD Plot</h2>
-                <div style={{ border: '1px solid #ccc', padding: '1em', minHeight: '200px' }}>
-                    {macdData && <Chart id="macd-chart" data={getMacdChartData()} options={chartOptions} />}
-                </div>
-                <button onClick={() => resetZoom('macd-chart')} style={{ marginTop: '1em' }}>Reset Zoom</button>
+            <button className="btn btn-secondary mt-4" onClick={() => resetZoom('price-chart')}>Reset View</button>
+          </div>
+
+          <div className="card mt-8">
+            <h2>Relative Strength Index (RSI 14)</h2>
+            <div className="chart-container">
+                {rsiData && <Chart id="rsi-chart" data={getRsiChartData()} options={chartOptions} />}
             </div>
-             <div style={{ marginTop: '2em' }}>
-                <h2>Prediction</h2>
-                <div style={{ border: '1px solid #ccc', padding: '1em' }}>
-                {prediction ? (
-                    <div>
-                    <p><strong>Trend:</strong> {prediction.trend}</p>
-                    <strong>Future Prices:</strong>
-                    <ul>
-                        {Object.entries(prediction.future_prices).map(([days, price]) => (
-                        <li key={days}>{`${days} Days: $${price}`}</li>
-                        ))}
-                    </ul>
-                    </div>
-                ) : (
-                    "[Prediction Result]"
-                )}
-                </div>
+            <button className="btn btn-secondary mt-4" onClick={() => resetZoom('rsi-chart')}>Reset View</button>
+          </div>
+
+          <div className="card mt-8">
+            <h2>MACD Histogram</h2>
+            <div className="chart-container">
+                {macdData && <Chart id="macd-chart" data={getMacdChartData()} options={chartOptions} />}
             </div>
+            <button className="btn btn-secondary mt-4" onClick={() => resetZoom('macd-chart')}>Reset View</button>
+          </div>
+          
         </div>
       )}
     </div>
